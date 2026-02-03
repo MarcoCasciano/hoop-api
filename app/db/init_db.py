@@ -1,9 +1,30 @@
-from app.db.database import engine
-from app.db.models import Base  # importa Brew indirettamente
+# app/db/init_db.py  (NO SQLALCHEMY)
+import os
+from dotenv import load_dotenv
+import psycopg
 
-def init_db() -> None:
-    Base.metadata.create_all(bind=engine)
+load_dotenv()
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL non impostata nel .env")
 
-if __name__ == "__main__":
-    init_db()
-    print("✅ DB e tabelle creati")
+INIT_SQL = """
+CREATE TABLE IF NOT EXISTS brews (
+  id BIGSERIAL PRIMARY KEY,
+  coffee TEXT NOT NULL,
+  dose DOUBLE PRECISION NOT NULL,
+  ratio DOUBLE PRECISION NOT NULL,
+  water DOUBLE PRECISION NOT NULL,
+  temperature INTEGER NOT NULL DEFAULT 94,
+  grind TEXT NOT NULL DEFAULT 'medium',
+  rating INTEGER NULL,
+  notes TEXT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+"""
+
+def init_db():
+    with psycopg.connect(DATABASE_URL) as conn:
+        with conn.cursor() as cur:
+            cur.execute(INIT_SQL)
+        conn.commit()
