@@ -1,4 +1,4 @@
-# app/main.py  (NO SQLALCHEMY)
+# app/main.py
 from __future__ import annotations
 
 from typing import List, Optional
@@ -11,18 +11,26 @@ from psycopg import Connection
 from app.db.database import get_conn
 from app.db.init_db import init_db
 
-app = FastAPI(title="Hoop API", version="0.1.0")
+app = FastAPI(
+    title = "Hoop API",
+    version = "0.1.0",
+    description = "API per la gestione delle estrazioni di caffè con Ceado Hoop"
+)
 
-# inizializzazione db
 @app.on_event("startup")
 def on_startup():
+    """Inizializza il database all'avvio dell'app"""
     init_db()
 
-# modelli Pydantic input/output
+# --- Modelli Pydantic: request/response ---
 
-# modello pydantic di input
-# descrive struttura json quando creo una brew
 class BrewCreate(BaseModel):
+    """
+    Schema di validazione dell'input (e applicazione vincoli) per la
+    creazione di una nuova estrazione (brew).
+    Descrive la struttura del JSON con tutti i parametri necessari
+    per definire la brew.
+    """
     coffee: str = Field(..., min_length=1, max_length=200)
     dose: float = Field(..., gt=0)
     ratio: float = Field(16.0, ge=10, le=25)
@@ -31,8 +39,11 @@ class BrewCreate(BaseModel):
     rating: Optional[int] = Field(None, ge=1, le=10)
     notes: Optional[str] = Field(None, max_length=500)
 
-# gestisce eventuale modifica di brew già salvata nel database
 class BrewUpdate(BaseModel):
+    """
+    Schema di eventuale aggiornamento di una brew già salvata nel db.
+    Tutti i parametri sono opzionali.
+    """
     coffee: Optional[str] = Field(None, min_length=1, max_length=200)
     dose: Optional[float] = Field(None, gt=0)
     ratio: Optional[float] = Field(None, ge=10, le=25)
@@ -41,9 +52,13 @@ class BrewUpdate(BaseModel):
     rating: Optional[int] = Field(None, ge=1, le=10)
     notes: Optional[str] = Field(None, max_length=500)
 
-# modello pydantic di output
-# quello che il client riceva dopo la get al db
 class BrewOut(BaseModel):
+    """
+    Schema di output per una brew.
+    Rappresenta il formato dei dati inviati al client.
+    Include tutti i parametri dell'estrazione, l'ID per leggere nel db
+    e la quantità d'acqua calcolata dal server.
+    """
     id: int # identificatore per leggere nel db
     coffee: str
     dose: float
@@ -54,20 +69,18 @@ class BrewOut(BaseModel):
     rating: Optional[int] = None
     notes: Optional[str] = None
 
-# semplice business rule
+# --- Business Logic ---
 
 def tips_for_brew(rating: Optional[int]) -> list[str]:
     """
-        Genera suggerimenti per migliorare la brew
+        Genera suggerimenti basati sul rating per migliorare la brew.
 
         Args:
-            rating: Valutazione 1-10 della brew (ritorna None se non valutata)
+            rating (Optional[int]): Valutazione 1-10 della brew
+            (ritorna None se non valutata).
 
         Returns:
-            Lista di suggerimenti basati sul rating:
-            - 1-5: sottoestratto → macinatura più fine, temperatura più alta
-            - 6-7: buono → micro-aggiustamenti
-            - 8-10: ottimo → replica e sperimenta con cautela
+            list[str]: Lista di suggerimenti basati sul rating.
     """
 
     if rating is None:
@@ -83,19 +96,26 @@ def tips_for_brew(rating: Optional[int]) -> list[str]:
     return ["Ottimo risultato: replica la ricetta e prova a cambiare solo un parametro alla volta."]
 
 
-# Endpoints
+# --- Endpoints ---
 
-# --- health check --- verifica app attiva e in funzione
-@app.get("/")
+@app.get("/", tags = ["System"])
 def health():
+    """
+    Health check dell'applicazione.
+    Verifica che il servizio sia attivo.
+    """
     return {"status": "ok", "app": "hoop-api"}
 
-# --- POST /brews --- crea una nuova brew nel db
-
-# FastAPI e Pydantic leggono il body della richiesta, validano JSON contro
-# modello BrewCreate, creano istanza BrewCreate e la passano come parametro payload alla funzione
 @app.post("/brews", response_model=dict, status_code=201)
 def create_brew(payload: BrewCreate, conn: Connection = Depends(get_conn)):
+    """
+    Crea una nuova registrazione di estrazione nel db.
+    Calcola automaticamente la quantità d'acqua necessaria basandosi su dose e ratio.
+
+    FastAPI e Pydantic leggono il body della richiesta, validano JSON contro
+    modello BrewCreate, creano istanza BrewCreate e la passano come parametro payload
+    alla funzione.
+    """
     water = round(payload.dose * payload.ratio, 1)
 
     with conn.cursor() as cur:
@@ -109,7 +129,7 @@ def create_brew(payload: BrewCreate, conn: Connection = Depends(get_conn)):
                 payload.coffee.strip(),
                 payload.dose,
                 payload.ratio,
-                water,
+                water, # viene calcolato nel codice, non preso dal payload
                 payload.temperature,
                 payload.grind,
                 payload.rating,
@@ -128,12 +148,26 @@ def create_brew(payload: BrewCreate, conn: Connection = Depends(get_conn)):
 # fetchall recupera ogni riga e la trasforma in un oggetto Python
 @app.get("/brews", response_model=List[BrewOut])
 def list_brews(limit: int = 50, conn: Connection = Depends(get_conn)):
+    """
+    Recupera una lista delle ultime estrazioni effettuate.
+
+    Args:
+    limit (int): Numero massimo di risultati (default 50, max 200).
+    """
     limit = max(1, min(limit, 200)) # min = 1, max = 200
     with conn.cursor() as cur:
         # query SQL
         cur.execute(
             """
-            SELECT id, coffee, dose, ratio, water, temperature, grind, rating, notes
+            SELECT id,
+                   coffee,
+                   dose,
+                   ratio,
+                   water,
+                   temperature,
+                   grind,
+                   rating,
+                   notes
             FROM brews
             ORDER BY id DESC
             LIMIT %s;
