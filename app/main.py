@@ -1,6 +1,7 @@
 # app/main.py
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from typing import List
 
 from fastapi import FastAPI, Depends, HTTPException
@@ -11,17 +12,20 @@ from app.db.init_db import init_db
 from app.domain.schemas import BrewCreate, BrewUpdate, BrewOut
 from app.services.brew_service import tips_for_brew, calculate_water
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Inizializza il database all'avvio dell'app."""
+    init_db()
+    yield
+
+
 app = FastAPI(
     title="Hoop API",
     version="0.1.0",
     description="API per la gestione delle estrazioni di caffè con Ceado Hoop",
+    lifespan=lifespan,
 )
-
-
-@app.on_event("startup")
-def on_startup():
-    """Inizializza il database all'avvio dell'app."""
-    init_db()
 
 
 # --- Endpoints ---

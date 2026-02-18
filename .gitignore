@@ -13,6 +13,8 @@ __pycache__/
 .env
 .env.*
 .env.py
+# Eccezione: i file .example sono template committabili
+!.env.*.example
 
 # IDE - PyCharm
 .idea/

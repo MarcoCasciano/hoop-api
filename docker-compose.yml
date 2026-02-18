@@ -3,18 +3,16 @@ services:
   db:
     image: postgres:16
     container_name: hoop_db
-    env_file:
-      - .env.docker
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: hoop
+      POSTGRES_PASSWORD: hoop
+      POSTGRES_DB: hoop_db
     ports:
       - "5432:5432"
     volumes:
       - hoop_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U hoop -d hoop_db"]
       interval: 5s
       timeout: 5s
       retries: 15
