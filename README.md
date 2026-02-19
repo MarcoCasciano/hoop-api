@@ -8,13 +8,16 @@ Costruita con **FastAPI** e **PostgreSQL**, permette di salvare ogni estrazione 
 
 ## Flusso dei dati
 
-Ogni estrazione transita attraverso tre schemi Pydantic che separano input, aggiornamento e output:
+Ogni estrazione transita attraverso schemi Pydantic che separano chiaramente input, aggiornamento e output:
 
 | Schema | Quando viene usato | Note |
 |--------|--------------------|------|
 | `BrewCreate` | `POST /brews` — creazione | Il client manda tutti i parametri; `water` è assente perché calcolato dal server |
 | `BrewUpdate` | `PATCH /brews/{id}` — aggiornamento parziale | Tutti i campi sono opzionali; se dose o ratio cambiano, `water` viene ricalcolato automaticamente |
-| `BrewOut` | Tutte le risposte del server | Include `id` e `water`; è il contratto su cosa il client riceve |
+| `BrewCreated` | Risposta di `POST /brews` | Restituisce solo l'`id` assegnato al record appena creato |
+| `BrewOut` | Risposta di `GET` e `PATCH` | Include `id`, `water` e `created_at`; è il contratto completo su cosa il client riceve |
+| `TipsOut` | Risposta di `GET /brews/{id}/tips` | Contiene `brew_id` e la lista di suggerimenti basati sul rating |
+| `HealthOut` | Risposta di `GET /` | Conferma che il servizio è attivo |
 
 ---
 
