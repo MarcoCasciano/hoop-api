@@ -39,6 +39,8 @@ hoop_app/
 │   ├── test_api.py          # Test di integrazione degli endpoint
 │   └── test_brew_service.py # Test unitari della business logic
 ├── docker-compose.yml       # PostgreSQL + API containerizzati
+├── .env.example             # Template variabili d'ambiente locali
+├── .env.docker.example      # Template variabili d'ambiente Docker
 ├── requirements.txt         # Dipendenze di produzione
 └── requirements-dev.txt     # Dipendenze di sviluppo (pytest, ecc.)
 ```
@@ -66,11 +68,11 @@ pip install -r requirements.txt
 
 ### 2. Configura le variabili d'ambiente
 
-Crea un file `.env` nella root del progetto:
+```bash
+cp .env.example .env
+```
 
-```
-DATABASE_URL=postgresql://hoop:hoop@localhost:5432/hoop_db
-```
+Il file `.env.example` contiene già i valori per l'ambiente locale.
 
 ### 3. Avvia il database
 
