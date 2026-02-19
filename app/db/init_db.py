@@ -1,12 +1,7 @@
 # app/db/init_db.py
-import os
-from dotenv import load_dotenv
 import psycopg
 
-load_dotenv()
-DATABASE_URL = os.getenv("DATABASE_URL")
-if not DATABASE_URL:
-    raise RuntimeError("DATABASE_URL non impostata nel .env")
+from app.db.database import DATABASE_URL
 
 INIT_SQL = """
 CREATE TABLE IF NOT EXISTS brews (
